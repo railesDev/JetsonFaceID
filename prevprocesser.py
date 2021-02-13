@@ -24,8 +24,9 @@ def main():
     channel = connection.channel(1)
     channel.queue_declare(queue='hello')
     channel.queue_declare(queue='newcomers')
-    channel.queue_declare(queue='allowance')
-    channel.queue_declare(queue='apply_info')
+    channel1 = connection.channel(2)
+    channel1.queue_declare(queue='allowance')
+    channel1.queue_declare(queue='apply_info')
 
     def callback(ch, method, properties, body_bytes):
         if body_bytes:
@@ -40,49 +41,81 @@ def main():
                     bot.send_message(chat_id, "Newcomer! Is he allowed to enter?")
                     bot.send_message(chat_id, "/enter Y|N")
 
-                    channel.queue_purge('allowance')
+                    channel1.queue_purge('allowance')
                     allowed = False
+
+                    def callback_allowance(chA, methodA, propertiesA, bodyA):
+                        bd = int.from_bytes(bodyA, sys.byteorder)
+                        print('[x] Acceptance from telegram received: %r' % bd)
+                        print("[x] Closing connection with the queue...")
+                        channel1.queue_purge('allowance')
+                        if bd == 1:
+                            raise ValueError  # exiting
+                        if bd == -1:
+                            raise IndentationError
+
+                    channel1.basic_consume(queue='allowance', on_message_callback=callback_allowance, auto_ack=True)
                     print('[x] Waiting for acceptance from telegram...')
-                    while True:
-                        method_frame, header_frame, body = channel.basic_get(queue="allowance", auto_ack=False)
-                        if method_frame:
-                            bd = int.from_bytes(body, sys.byteorder)
-                            print('[x] Acceptance from telegram received: %r' % bd)
-                            channel.basic_ack(method_frame.delivery_tag)
-                            break
-                    print("[x] Disconnecting from the queue...")
-                    channel.queue_purge('allowance')
-                    allowed = (bd == 1)
+                    try:
+                        channel1.start_consuming()
+                    except IndentationError:
+                        allowed = False
+                        channel1.queue_purge('allowance')
+                        # channel1.close()
+                        channel1.stop_consuming()
+                    except ValueError:
+                        allowed = True
+                        channel1.queue_purge('allowance')
+                        # channel1.close()
+                        channel1.stop_consuming()
 
                     if allowed:
                         bot.send_message(chat_id, "Okay, now please type all the info about him: ")
-                        bot.send_message(chat_id, "You should do it like this: /apply <name> <y.o> <profession>")
+                        bot.send_message(chat_id, "/apply <name> <y.o> <profession>")
                         # VULNERABILITY: if there are mistakes, there's no chance to change anything
-                        # IDEA: /edit - edit incorrect data in database
                         bot.send_message(chat_id, "Always check correct info!")
 
                         # channel1 = connection.channel(1)
 
-                        channel.queue_purge('apply_info')
+                        channel1.queue_purge('apply_info')
                         PersonData = {}
 
-                        while True:
-                            method_frame, header_frame, body = channel.basic_get(queue="apply_info", auto_ack=False)
-                            if method_frame and (body is not None):
-                                pd = body.decode('utf-8').split(' ')
+                        def callback_application(chAP, methodAP, propertiesAP, bbytes):
+                            if bbytes:
+                                pd = bbytes.decode("utf-8")
                                 PersonData.setdefault('name', pd[0])
                                 PersonData.setdefault('y.o', pd[1])
                                 PersonData.setdefault('profession', pd[2])
                                 x = datetime.datetime.now()
-                                visits = [str(x.day)+' '+str(x.month)+' '+str(x.year)]
+                                visits = [str(x.day)+str(x.month)+str(x.year)]
                                 PersonData.setdefault('visits', visits)
                                 bd = int.from_bytes(body, sys.byteorder)
-                                print('[x] Guest details from telegram received: %r' % bd)
-                                channel.basic_ack(method_frame.delivery_tag)
-                                break
-                        print("[x] Disconnecting from the queue...")
-                        channel.queue_purge('apply_info')
+                                channel1.queue_purge('apply_info')
+                                raise ValueError  # exiting
 
+                        channel1.basic_consume(queue='apply_info', on_message_callback=callback_application, auto_ack=True)
+                        try:
+                            channel1.start_consuming()
+                        except ValueError:
+                            channel1.queue_purge('allowance')
+                            # channel1.close()
+                            channel1.stop_consuming()
+                        # FOR ADMIN: id = -1 means an impostor!
+                        '''
+                        def generate_name():
+                            name = chr(random.randint(97, 122)).upper()
+                            n = random.randint(4, 10)
+                            for i in range(n):
+                                name += chr(random.randint(97, 122))
+                            return name
+                     
+                        PersonData = {
+                            'name': 'Railes',
+                            'years old': 16,
+                            'profession': 'newcomer',
+                            'visits': [1, 5, 31],
+                        }
+                        '''
                         names = open("names.txt", "r")
                         strnames = names.read()
                         names.close()
@@ -93,15 +126,15 @@ def main():
                         strnames += " " + PersonData['name']
                         names.write(strnames)
                         names.close()
-                        print("[x] Updated the names list - now all new ones are available for facefinder")
-                        # TODO: writing PersonData to a database (parameters are personID from names.txt and PersonData from telegram)
-                        # FOR ADMIN: id = -1 means an impostor
+
+                        # TODO: writing to a database (parameters are personID from names.txt and PersonData from telegram)
+
                         # now we just need to send the id to facefinder
                         channel.queue_purge('newcomers')
                         channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([personID]))
                         bot.send_message(chat_id, str(PersonData))
                         print("[x] Sent new person ID (%r) to facefinder" % personID)
-                    else:  # if not allowed
+                    else:
                         channel.queue_purge('newcomers')
                         channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
                         print("[x] Sent ignoring request to facefinder")
@@ -114,18 +147,15 @@ def main():
                         'name': 'Vlad',
                         'years old': 16,
                         'profession': 'CEO',
-                        'visits': ["1 01 2020", "05 05 2020", "31 12 2019"],
+                        'visits': [1, 5, 31],
                     }
-                    x = datetime.datetime.now()
-                    PersonDataRead['visits'].append(str(x.day)+' '+str(x.month)+' '+str(x.year))
-
                     # TODO: adding day to visitsMonth
 
                     channel.queue_purge('newcomers')
-                    # channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
-                    # print("[x] Sent known person ID (%s) to facefinder" % personID)
-                    bot.send_message(chat_id, "Newcomer is known as: "+str(PersonDataRead))
-                    print(" [-] Person is "+PersonDataRead['name']+" and his id is "+personID)
+                    channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
+                    print("[x] Sent known person ID (%s) to facefinder" % personID)
+                    bot.send_message(chat_id, "Newcomer status: "+str(PersonDataRead))
+                    print(" [-] Person is "+PersonDataRead['name']+" and id is "+personID)
             channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
         else:
             channel.queue_purge('newcomers')
@@ -150,13 +180,3 @@ while True:
 # except KeyboardInterrupt:
 # print('Interrupted')
 # sys.exit(0)
-"""
-def generate_name():
-    name = chr(random.randint(97, 122)).upper()
-    n = random.randint(4, 10)
-    for i in range(n):
-        name += chr(random.randint(97, 122))
-    return name
-                     
-    PersonData = { 'name': 'Railes', 'years old': 16, 'profession': 'newcomer', 'visits': [1, 5, 31],}
-"""
