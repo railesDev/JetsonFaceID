@@ -1,3 +1,7 @@
+#                                            QUEUES PURGER
+# -----------------------------------------------------------------------------------------------------------
+# needed for deleting data in pika queues from other, sometimes halted, sessions
+
 import pika
 
 
