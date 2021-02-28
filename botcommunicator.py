@@ -51,7 +51,7 @@ def newcomer_info(message):
     channel = connection.channel(2)
     channel.queue_declare(queue='apply_info')
     channel.queue_purge('apply_info')
-    channel.basic_publish(exchange='', routing_key='apply_info', body=' '.join(message.text[7:]).encode('utf-8'))
+    channel.basic_publish(exchange='', routing_key='apply_info', body=message.text[8:].encode('utf-8'))
     connection.close()
 
 

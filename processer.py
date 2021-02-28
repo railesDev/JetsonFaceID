@@ -13,7 +13,6 @@ import queues_purge
 
 
 def main():
-    print("Processer console\n________________________________")
     bot = telebot.TeleBot(config.TOKEN)
     chat_id = 737474036
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
@@ -31,12 +30,13 @@ def main():
             ids = body.split(',')
             photo = open('faces.png', 'rb')
             data = photo.read()
-            bot.send_photo(chat_id, data, "Newcomer!\n'/welcome' or '/keep_out'?")
+            bot.send_photo(chat_id, data, "Newcomer detected!")
             for personID in ids:  # let's imagine that ids has only 1 element:)
                 # TODO: processing multiple faces or creating a rule = one face per photo
                 if personID == '-1':
                     channel.queue_purge('allowance')
                     allowed = False
+                    bot.send_message(chat_id, "Hmm, I couldn't find him in database.\n'/welcome' or '/keep_out'?")
                     datestamp = str(datetime.datetime.now()).split(' ')[1]
                     print('['+datestamp+'] Waiting for acceptance from telegram...')
                     while True:
@@ -78,7 +78,7 @@ def main():
                         strnames += "," + thisis
                         names.write(strnames)
                         names.close()
-                        bot.send_message(chat_id, "Remember that ID of " + thisis + " is "+personID +\
+                        bot.send_message(chat_id, "Remember that ID of " + thisis + " is "+str(personID) +\
                                          "\nYou are able to change it and type additional info about an employee via /edit <ID>")
                         print("[x] Updated the names list")
                         # TODO: writing {personID+thisis+[]*other_data} to a database
@@ -125,6 +125,7 @@ def main():
     channel.queue_purge("newcomers")
 
 
+print("Processer console\n________________________________")
 while True:
     if __name__ == '__main__':
         try:

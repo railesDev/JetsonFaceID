@@ -18,7 +18,6 @@ detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalfac
 
 
 def recognise():
-    print("Facefinder console\n________________________________")
     cam = cv2.VideoCapture(0)
     cam.set(3, 640)  # set video width
     cam.set(4, 480)  # set video height
@@ -189,7 +188,7 @@ def create_dataset():  # called only if it's a new person
     cam0.set(3, 640)  # set video width
     cam0.set(4, 480)  # set video height
     # For each person, enter one numeric face id
-    print("[x] Initializing face capture ...")
+    print("[x] Initializing face capture...")
     # Initialize individual sampling face count
     count = 0
     while True:
@@ -234,7 +233,7 @@ def perform_training():  # called if add_to_base was called
                 id_s.append(id)
         return faceSamples, id_s
 
-    print("[x] Training faces. It will take a few seconds. Wait ...")
+    print("[x] Training faces. It will take a few seconds. Please wait...")
     faces, ids = get_images_and_labels(path)
     recognizer.train(faces, np.array(ids))
     # Save the model into trainer/trainer.yml
@@ -246,10 +245,15 @@ def perform_training():  # called if add_to_base was called
 
 
 if __name__ == "__main__":
+    print("Facefinder console\n________________________________")
     queues_purge.qp()
-    c = input('Welcome. Is dataset ready?(Y/N) ')
-    if c.lower() == "n":
+    print('Welcome. Checking whether dataset is ready...')
+    if not any([True for _ in os.scandir('dataset')]):
+        datestamp = str(datetime.datetime.now()).split(' ')[1]
+        print('['+datestamp+'] Dataset is not ready. Capturing the first face. Look at the camera please')
         create_dataset()
+    datestamp = str(datetime.datetime.now()).split(' ')[1]
+    print('['+datestamp+'] Starting main module...')
     recognise()
 
 
