@@ -47,3 +47,5 @@ Purge_queues deletes all the odd info from queues from older sessions
 Requirements can be found in requirements.txt
 
 Dbmanager works as a library of functions that will be used by processer
+
+UPD: Now takes 60 photos and works with docker postgresql database!
