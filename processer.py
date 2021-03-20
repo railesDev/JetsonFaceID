@@ -10,6 +10,8 @@ import telebot
 import datetime
 import config
 import queues_purge
+import db_table
+from main.database.launch_db_session import Session, engine, Base
 
 
 def main():
@@ -21,6 +23,7 @@ def main():
     channel.queue_declare(queue='newcomers')
     channel.queue_declare(queue='allowance')
     channel.queue_declare(queue='apply_info')
+    channel.queue_declare(queue="newcomer_add")
 
     def callback(ch, method, properties, body_bytes):
         if body_bytes:
@@ -81,7 +84,14 @@ def main():
                         bot.send_message(chat_id, "Remember that ID of " + thisis + " is "+str(personID) +\
                                          "\nYou are able to change it and type additional info about an employee via /edit <ID>")
                         print("[x] Updated the names list")
-                        # TODO: writing {personID+thisis+[]*other_data} to a database
+                        NCData = {
+                            'thisis': thisis,
+                            'y.o.': -1,
+                            'profession': '_',
+                            'visits': [datetime.datetime.today().strftime('%Y-%m-%d')]
+                        }
+                        # ADDING
+                        db_table.add(NCData)
                         channel.queue_purge('newcomers')
                         channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([personID]))
                         print("[x] Sent new person ID (%r) to facefinder" % personID)
@@ -91,25 +101,19 @@ def main():
                         print("[x] Sent ignoring request to facefinder")
 
                 else:
-                    # TODO: reading database - search by int(person) (it is id)
-                    #  search result goes as PersonData
-                    PersonDataRead = {
-                        'name': 'Vlad',
-                        'years old': 16,
-                        'profession': 'CEO',
-                        'visits': ["1 01 2020", "05 05 2020", "31 12 2019"],
-                    }
+                    # UPDATE VISITS
+                    print('[x] Trying to find person with ID '+str(personID))
+                    person = db_table.get(personID)
                     x = datetime.datetime.now()
-                    PersonDataRead['visits'].append(str(x.day)+' '+str(x.month)+' '+str(x.year))
-
-                    # TODO: adding day to visitsMonth and trying not to use list of ALL visits
-                    #  storing array of visits in database
-
+                    if not datetime.datetime.today().date() in person.visits:
+                        person.visits.append(datetime.datetime.today().date())
+                    Session.flush()
                     channel.queue_purge('newcomers')
                     # channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
                     # print("[x] Sent known person ID (%s) to facefinder" % personID)
-                    bot.send_message(chat_id, "Newcomer is known as: "+str(PersonDataRead))
-                    print(" [-] Person is "+PersonDataRead['name']+" and his id is "+personID)
+                    bot.send_message(chat_id, f'Newcomer is known as: {person.thisis}, {person.yo}, who is {person.profession}, \
+                    has visited building during {", ".join(map(str, person.visits))}')
+                    print(" [-] Person is "+person.thisis+" and his id is "+personID)
             channel.basic_publish(exchange='', routing_key='newcomers', body=bytes([0]))
         else:
             channel.queue_purge('newcomers')

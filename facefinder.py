@@ -11,6 +11,8 @@ import pika
 import sys
 import datetime
 import queues_purge
+import db_table
+from main.database.launch_db_session import Session, engine, Base
 
 
 recognizer = cv2.face.LBPHFaceRecognizer_create()
@@ -172,7 +174,7 @@ def add_face_to_dataset(face_id):  # called only if it's a new person
         k = cv2.waitKey(100) & 0xff  # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif count >= 30:  # Take 30 face sample and stop video
+        elif count >= 60:  # Take 60 face sample and stop video
             break
     # Do a bit of cleanup
     print("[x] Exiting Face Detector and cleaning up...")
@@ -205,7 +207,7 @@ def create_dataset():  # called only if it's a new person
         k = cv2.waitKey(100) & 0xff  # Press 'ESC' for exiting video
         if k == 27:
             break
-        elif count >= 30:  # Take 30 face sample and stop video
+        elif count >= 60:  # Take 60 face sample and stop video
             break
     # Do a bit of cleanup
     print("[x] Exiting Face Detector and cleaning up...")
@@ -252,6 +254,15 @@ if __name__ == "__main__":
         datestamp = str(datetime.datetime.now()).split(' ')[1]
         print('['+datestamp+'] Dataset is not ready. Capturing the first face. Look at the camera please')
         create_dataset()
+        # PRESET (as well as names.txt with None, Vladislav Railes
+        NCData = {
+            'thisis': 'Vladislav Railes',
+            'y.o.': -1,
+            'profession': '_',
+            'visits': [datetime.datetime.today().strftime('%Y-%m-%d')]
+        }
+        db_table.add(NCData)
+        Session.commit()
     datestamp = str(datetime.datetime.now()).split(' ')[1]
     print('['+datestamp+'] Starting main module...')
     recognise()

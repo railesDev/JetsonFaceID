@@ -1,0 +1,1 @@
+Now JFID only can recognise one unknown guest, so camera should have a limited circle
