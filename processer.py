@@ -11,7 +11,7 @@ import datetime
 import config
 import queues_purge
 import db_table
-from main.database.launch_db_session import Session, engine, Base
+from main.docker_shell.launch_db_session import Session, engine, Base
 
 
 def main():

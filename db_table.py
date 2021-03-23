@@ -1,7 +1,8 @@
-from datetime import date
 from sqlalchemy.dialects import postgresql
-from main.database.launch_db_session import Session, engine, Base
+from main.docker_shell.launch_db_session import Session, engine, Base
 from sqlalchemy import Column, String, Integer, Date
+import contextlib
+from sqlalchemy import MetaData
 
 
 class Employee(Base):
@@ -22,7 +23,6 @@ class Employee(Base):
 
 def add(PD):
     Base.metadata.create_all(engine)
-    # railes = Employee("Vladislav Railes", 16, "CEO", [date(2021, 10, 11)])
     Session.add(Employee(PD['thisis'], PD['y.o.'], PD['profession'], PD['visits']))
     Session.commit()
     Session.close()
@@ -33,9 +33,15 @@ def get(id):
     return query.get(id)
 
 
-def deleteall():
-    Session.query(Employee).delete()
-    Session.commit()
+def delete_all():  # unchecked
+    # Session.query(Employee).delete()
+    # Session.commit()
+    meta = MetaData()
+    with contextlib.closing(engine.connect()) as con:
+        trans = con.begin()
+        for table in reversed(meta.sorted_tables):
+            con.execute(table.delete())
+        trans.commit()
 
 
 def get_all():
@@ -47,13 +53,8 @@ def gat():
     emps = Session.query(Employee).all()
     print('\n### All employees:')
     for emp in emps:
-        print(f'{emp.id} and {emp.thisis}, {emp.yo}, who is {emp.profession}, has visited building during {emp.visits}')
+        print(f'{emp.id}, {emp.thisis}, {emp.yo}, who is {emp.profession}, has visited building during {emp.visits}')
 
 
 def convert_to_pd(obj):
     return {'thisis': obj.thisis, 'y.o.': obj.yo, 'profession': obj.profession, 'visits': obj.visits}
-
-
-# deleteall()
-# gat()
-# print(get(2))

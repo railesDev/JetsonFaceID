@@ -4,12 +4,13 @@
 
 import telebot
 import config
-
 import pika
 import db_table
 import datetime
-from main.database.launch_db_session import Session, engine, Base
-
+import matplotlib.pyplot as plt
+import pandas as pd
+from db_table import Employee
+from main.docker_shell.launch_db_session import Session, engine
 
 bot = telebot.TeleBot(config.TOKEN)
 
@@ -21,10 +22,11 @@ def welcome(message):
 
 @bot.message_handler(commands=['help'])
 def welcome(message):
-    bot.send_message(message.chat.id, "Let's look at sth I can do:\n/welcome - allow newcomer to enter\n/keep_out - otherwise, the door won't be opened\n/edit_info ID KEY VALUE = type missing info about employee or change it")
-    bot.send_message(message.chat.id, "Attention: /edit_info thisis Vladislav_Railes - the words of thisis should be divided by _, not whitespace")
+    bot.send_message(message.chat.id, "Let's look at sth I can do:\n/welcome - allow newcomer to enter\n/keep_out - otherwise, the door won't be opened\n/editinf ID KEY VALUE = type missing info about employee or change it")
+    bot.send_message(message.chat.id, "Attention: /editinf thisis Vladislav_Railes - the words of thisis should be divided by _, not whitespace")
     bot.send_message(message.chat.id, "KEYs are: thisis (name+surname), yo (years old), profession, visits")
-    bot.send_message(message.chat.id, "In order to delete incorrect visit mark,\ntype /del_visit YYYY-mm-dd")
+    bot.send_message(message.chat.id, "In order to delete incorrect visit mark,\ntype /rmvisit YYYY-mm-dd")
+    bot.send_message(message.chat.id, "If you want to look at the attendance report, type /report. I will send you a pic^^")
 
 
 @bot.message_handler(commands=['welcome'])
@@ -68,38 +70,54 @@ def get_person_info(message):
     bot.send_message(message.chat.id, db_table.convert_to_pd(db_table.get(ID)))
 
 
-@bot.message_handler(commands=['get_all'])
+@bot.message_handler(commands=['getall'])
 def get_all(message):
     emps = db_table.get_all()
     for emp in emps:
         bot.send_message(message.chat.id, f'{emp.thisis}, {emp.yo}, who is {emp.profession}, has visited building during {", ".join(map(str, emp.visits))}')
 
 
-@bot.message_handler(commands=['edit_info'])
+@bot.message_handler(commands=['editinf'])
 def edit_person_info(message):
     msg = message.text.split()
     if len(msg) > 3:
-        ID = int(msg[1])
+        try:
+            ID = int(msg[1])
+        except ValueError:
+            bot.send_message(message.chat.id, "Oops! You've forgotten about <ID> parameter!")
         person = db_table.get(ID)
         i = 2
         while i < len(msg):
             if msg[i] == 'thisis':
-                person.thisis = msg[i+1]
+                try:
+                    person.thisis = msg[i+1]
+                except IndexError:
+                    bot.send_message(message.chat.id, "Oops! You've forgotten about the value!")
+                    return
                 i += 2
             elif msg[i] == 'yo':
-                person.yo = msg[i+1]
+                try:
+                    person.yo = msg[i+1]
+                except ValueError:
+                    bot.send_message(message.chat.id, "Oops! You've forgotten about the value!")
+                    return
                 i += 2
             elif msg[i] == 'profession':
-                person.profession = msg[i+1]
+                try:
+                    person.profession = msg[i+1]
+                except IndexError:
+                    bot.send_message(message.chat.id, "Oops! You've forgotten about the value!")
+                    return
                 i += 2
             else:
                 i = len(msg)
         Session.flush()  # /edit ID thisis Vladislav_Ralles yo 17
+        bot.send_message(message.chat.id, "Successfully updated the entries that were typed without mistakes")
     else:
         bot.send_message(message.chat.id, "Incorrect parameters. Try again)")
 
 
-@bot.message_handler(commands=['del_visit'])
+@bot.message_handler(commands=['rmvisit'])
 def del_visit(message):
     ID = int(message.text.split()[1])
     visit = datetime.datetime.strptime(message.text.split()[2], '%Y-%m-%d').date()
@@ -111,7 +129,20 @@ def del_visit(message):
         nvz.append(datetime.datetime.strptime(d, '%Y-%m-%d').date())
     person.visits = nvz
     Session.flush()
+    bot.send_message(message.chat.id, "Successfully deleted an entry")
 
 
-# TODO: add searching by visit and deleting it (del(visits.index(visit)), session.flush())
+@bot.message_handler(commands=['report'])
+def create_report(message):
+    plt.rcParams.update({'figure.autolayout': True})
+    df = pd.read_sql(Session.query(Employee).statement, engine)
+    df = df.explode('visits')
+    df.plot.scatter(x='thisis', y='visits', c='DarkBlue', cmap='ocean')
+    plt.savefig('graph.png')
+    # plt.show()
+    photo = open('graph.png', 'rb')
+    data = photo.read()
+    bot.send_photo(message.chat.id, data)
+
+
 bot.polling(none_stop=True)

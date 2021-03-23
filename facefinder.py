@@ -12,7 +12,7 @@ import sys
 import datetime
 import queues_purge
 import db_table
-from main.database.launch_db_session import Session, engine, Base
+from main.docker_shell.launch_db_session import Session, engine, Base
 
 
 recognizer = cv2.face.LBPHFaceRecognizer_create()
@@ -104,7 +104,6 @@ def recognise():
                     print("[x] Closing connection with the queue...")
                     channel.queue_purge('newcomers')
                     raise IndentationError  # exiting
-
             channel.basic_consume(queue='newcomers', on_message_callback=callback, auto_ack=True)
             datestamp = str(datetime.datetime.now()).split(' ')[1]
             print('['+datestamp+'] Waiting for acceptance from telegram...')
@@ -113,7 +112,6 @@ def recognise():
             except IndentationError:
                 channel.queue_purge('newcomers')
                 connection.close()
-
             if newcomers_ids:
                 print("[x] Adding all the new faces")
                 cam.release()
@@ -262,7 +260,7 @@ if __name__ == "__main__":
             'visits': [datetime.datetime.today().strftime('%Y-%m-%d')]
         }
         db_table.add(NCData)
-        Session.commit()
+        Session.flush()
     datestamp = str(datetime.datetime.now()).split(' ')[1]
     print('['+datestamp+'] Starting main module...')
     recognise()

@@ -1,0 +1,18 @@
+Database:
+id |      thisis      | yo | profession |                visits                            |
+ 1 | Vladislav Railes | -1 |     _      | [datetime.datetime.today().strftime('%Y-%m-%d')] |
+
+Names.txt:
+None, Vladislav Railes
+
+~/dataset: <empty>
+
+trainer.yml: <not exist>
+
+launch ~/utilitary/queues_restart.sh
+
+if needed, stop->remove->start docker instance
+
+launch ~/docker_shell/launch_db_session.py
+
+launch botcommunicator.py, processer.py, facefinder.py
