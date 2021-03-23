@@ -24,12 +24,6 @@ when it receives answer (whether newcomer should enter or not), it saves new inf
 
 Issues:
 
-Bad camera -> testing can't be held because of low quality of my tech equipment
-
-Low accuracy of faces detection - sometimes even long hair is treated as face
-
-Sometimes newcomer is added multiple times
-
 Problems with recognising many people - when turning to training mode, only one face should be in the camera sight. So, there should be some limitations provided by companies that use this software.
 
 Processer
@@ -40,12 +34,11 @@ TODO: adding new info to database
 Botcommunicator
 
 Performs replying to user's messages and handles commands
-TODO: edit database
 
 Purge_queues deletes all the odd info from queues from older sessions
 
 Requirements can be found in requirements.txt
 
-Dbmanager works as a library of functions that will be used by processer
+Db_table works as a library of functions that will be used by processer, botcommunicator and facefinder
 
-UPD: Now takes 60 photos and works with docker postgresql database!
+UPD: Now takes 60 photos and works with docker postgresql database! The accuracy has been made higher and now there's an option of editing the database and sending the report photo
