@@ -86,8 +86,8 @@ def main():
                         print("[x] Updated the names list")
                         NCData = {
                             'thisis': thisis,
-                            'y.o.': -1,
-                            'profession': '_',
+                            'y.o.': 0,
+                            'profession': 'New employee',
                             'visits': [datetime.datetime.today().strftime('%Y-%m-%d')]
                         }
                         # ADDING

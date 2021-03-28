@@ -255,8 +255,8 @@ if __name__ == "__main__":
         # PRESET (as well as names.txt with None, Vladislav Railes
         NCData = {
             'thisis': 'Vladislav Railes',
-            'y.o.': -1,
-            'profession': '_',
+            'y.o.': 0,
+            'profession': 'New employee',
             'visits': [datetime.datetime.today().strftime('%Y-%m-%d')]
         }
         db_table.add(NCData)
